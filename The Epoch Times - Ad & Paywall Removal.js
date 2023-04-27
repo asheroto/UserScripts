@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name            The Epoch Times - Ads & Paywall Removal
 // @namespace       The Epoch Times - Ads & Paywall Removal
-// @version         1.0
+// @version         1.1
 // @description     Removes ads and paywall on The Epoch Times.
 // @author          asheroto
 // @license         MIT
@@ -15,7 +15,7 @@
 // @author          asheroto
 // ==/OpenUserScript==
 
-/* jshint esversion: 6 */
+/* jshint esversion: 8 */
 
 (function () {
 
@@ -25,8 +25,8 @@
 	// Console logging function
 	function doLog(msg) {
 		console.log(logPrefix + " " + msg);
-	};
-
+	}
+	
 	// Function to wait until an element exists
 	async function waitForElement(selector, callback, checkFrequencyInMs, timeoutInMs) {
 		doLog("Waiting for element: " + selector);
