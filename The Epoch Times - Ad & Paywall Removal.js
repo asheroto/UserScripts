@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name            The Epoch Times - Ads & Paywall Removal
 // @namespace       The Epoch Times - Ads & Paywall Removal
-// @version         1.1
+// @version         1.2
 // @description     Removes ads and paywall on The Epoch Times.
 // @author          asheroto
 // @license         MIT
@@ -26,7 +26,7 @@
 	function doLog(msg) {
 		console.log(logPrefix + " " + msg);
 	}
-	
+
 	// Function to wait until an element exists
 	async function waitForElement(selector, callback, checkFrequencyInMs, timeoutInMs) {
 		doLog("Waiting for element: " + selector);
@@ -82,8 +82,8 @@
 		doLog("Applied styles");
 	}
 
+	// Every 0.5 seconds, check if any item from the blacklist array is included in the src value of an item, and if so, hide that item, ends loop after 5 seconds
 	async function removeElements() {
-		// Every 0.5 seconds, check if any item from the blacklist array is included in the src value of an item, and if so, hide that item, ends loop after 5 seconds
 		const blacklist = ["doubleclick.", "amazon-adsystem", "adnxs", "ads."];
 		const tags = ["script", "iframe"];
 
@@ -94,7 +94,7 @@
 					blacklist.forEach(function (b) {
 						if (src.src.includes(b)) {
 							src.style.setProperty('display', 'none', 'important');
-							console.log(src.src);
+							doLog("Hidden: " + item + " " + src.src);
 						}
 					});
 				});
@@ -105,7 +105,6 @@
 		setTimeout(function () {
 			clearInterval(repeat);
 			doLog("Stopped removal loop");
-			resolve();
 		}, 5000);
 	}
 
@@ -139,7 +138,6 @@
 		setTimeout(function () {
 			clearInterval(repeat);
 			doLog("Stopped removal loop");
-			resolve();
 		}, 5000);
 	}
 
