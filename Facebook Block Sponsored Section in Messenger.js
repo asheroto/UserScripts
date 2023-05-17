@@ -1,7 +1,7 @@
 // ==UserScript==
-// @name            Facebook Blocks
-// @version         0.3
-// @description     Removes the section titled "Sponsored" on the right side of Facebook in the messenger area and removes the stories
+// @name            Facebook Block Sponsored Section in Messenger
+// @version         0.7
+// @description     Removes the section titled "Sponsored" on the right side of Facebook in the messenger area
 // @author          asheroto
 // @license         MIT
 // @icon            https://facebook.com/favicon.ico
@@ -26,17 +26,20 @@
 		return result;
 	};
 
-	let thePath = "//div/div[1]/div/div[3]/div/div/div[1]/div[1]/div/div[3]/div/div/div[1]/div/div[1]/span/div";
+	let thePath = "/html/body/div[1]/div/div[1]/div/div[5]/div/div/div[3]/div/div/div[1]/div[1]/div/div[2]/div/div/div[1]/div/div[1]/span";
 
-	// Run every 0.5 seconds
-	let intv = 500;
+	let runCount;
+	let intv = 500; // Run every 0.5 seconds
+	let intvEnd = 5000; // Clear after 5 seconds
 	let go = setInterval(pollDOM, intv);
 
-	// Clear after 5 seconds
-	let intvEnd = 5000;
-	setTimeout(function () { clearInterval(go); }, intvEnd);
-
 	function pollDOM() {
+		runCount += intv; // Add intv value to runCount every time to count the amount of ms ran
+		if (runCount >= intvEnd) {
+			// Clear interval after intvEnd ms
+			clearInterval(go);
+		}
+
 		try {
 			if (xpath(thePath)[0].children[0].children.length) {
 				xpath(thePath)[0].children[0].remove();
@@ -44,17 +47,4 @@
 		}
 		catch (e) { }
 	}
-
-	setTimeout(function () {
-		thePath = "/html/body/div[1]/div/div[1]/div/div[3]/div/div/div[1]/div[1]/div/div[2]/div/div/div/div[2]";
-		if (xpath(thePath)[0].length) {
-			xpath(thePath)[0].remove();
-		}
-	}, 1500);
-
-	thePath = "/html/body/div[1]/div/div[1]/div/div[5]/div/div/div[3]/div/div/div[1]/div[1]/div/div[2]/div/div/div[1]/div/div[1]/span";
-	intv = 500;
-	go = setInterval(pollDOM, intv);
-	intvEnd = 5000;
-	setTimeout(function () { clearInterval(go); }, intvEnd);
 })();
