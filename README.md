@@ -1,4 +1,6 @@
-# User scripts
+[![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/W7W64WAXN)
+
+# User Scripts
 
 Scripts for [GreaseMonkey](https://github.com/greasemonkey/greasemonkey)/[TamperMonkey](https://github.com/Tampermonkey/tampermonkey).
 
