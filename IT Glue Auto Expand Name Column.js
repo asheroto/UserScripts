@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         IT Glue - Auto Expand Name Column
 // @namespace    asheroto
-// @version      0.0.1
+// @version      0.0.2
 // @description  Automatically expands the Name column on IT Glue tables by simulating a real mouse drag on the column-resizer.
 // @match        https://*.itglue.com/*
 // @run-at       document-idle
@@ -11,22 +11,20 @@
 (function () {
     'use strict';
 
-    // How far to drag the resizer to the right (in pixels).
     const DRAG_DISTANCE_PX = 300;
-
-    // How long the resizer must be "stable" (unchanged position/size) before
-    // we treat React as fully hydrated and dispatch the drag.
     const SETTLE_MS = 1500;
-
-    // Extra delay after window 'load' before we even start watching, to let
-    // React do its first few render passes.
     const POST_LOAD_DELAY_MS = 1000;
-
-    // Hard cap so we don't wait forever.
+    const POST_NAV_DELAY_MS = 500;
     const MAX_WAIT_MS = 30000;
 
-    // Track which tables we've already resized.
-    const handledTables = new WeakSet();
+    // If the Name column is already at least this wide, skip the drag.
+    const ALREADY_WIDE_PX = 400;
+
+    function isTargetPage() {
+        return /\/passwords\/?$/.test(location.pathname);
+    }
+
+    let handledTables = new WeakSet();
 
     function fireMouseEvent(type, target, x, y) {
         const evt = new MouseEvent(type, {
@@ -60,8 +58,6 @@
         fireMouseEvent('mouseup', document, endX, startY);
     }
 
-    // Wait until the resizer has been in the DOM with a stable position
-    // for SETTLE_MS — our proxy for "React has finished hydrating".
     function waitForResizerToSettle(table) {
         return new Promise((resolve, reject) => {
             const startedAt = Date.now();
@@ -71,6 +67,16 @@
             const tick = () => {
                 if (Date.now() - startedAt > MAX_WAIT_MS) {
                     reject(new Error('Timed out waiting for resizer to settle'));
+                    return;
+                }
+
+                if (!document.contains(table)) {
+                    reject(new Error('Table detached from DOM'));
+                    return;
+                }
+
+                if (!isTargetPage()) {
+                    reject(new Error('Navigated away from target page'));
                     return;
                 }
 
@@ -95,7 +101,7 @@
                 }
 
                 if (Date.now() - lastChangeAt >= SETTLE_MS && rRect.width > 0 && rRect.height > 0) {
-                    resolve(resizer);
+                    resolve({ resizer, nameTh });
                     return;
                 }
 
@@ -111,9 +117,24 @@
         handledTables.add(table);
 
         try {
-            const resizer = await waitForResizerToSettle(table);
+            const { resizer, nameTh } = await waitForResizerToSettle(table);
+
+            const currentWidth = nameTh.getBoundingClientRect().width;
+            if (currentWidth >= ALREADY_WIDE_PX) {
+                console.log(
+                    '[IT Glue Expand] Name column already',
+                    Math.round(currentWidth),
+                    'px (>=', ALREADY_WIDE_PX, 'px), skipping drag'
+                );
+                return;
+            }
+
             dragResizer(resizer, DRAG_DISTANCE_PX);
-            console.log('[IT Glue Expand] Dragged Name column resizer by', DRAG_DISTANCE_PX, 'px');
+            console.log(
+                '[IT Glue Expand] Name column was',
+                Math.round(currentWidth),
+                'px — dragged by', DRAG_DISTANCE_PX, 'px'
+            );
         } catch (err) {
             console.warn('[IT Glue Expand]', err.message);
             handledTables.delete(table);
@@ -121,14 +142,18 @@
     }
 
     function scanForTables(root = document) {
+        if (!isTargetPage()) return;
         const tables = root.querySelectorAll('div.react-table');
         tables.forEach(expandNameColumn);
     }
 
-    function start() {
-        scanForTables();
+    let observer = null;
 
-        const observer = new MutationObserver((mutations) => {
+    function startObserver() {
+        if (observer) observer.disconnect();
+
+        observer = new MutationObserver((mutations) => {
+            if (!isTargetPage()) return;
             for (const m of mutations) {
                 for (const node of m.addedNodes) {
                     if (!(node instanceof HTMLElement)) continue;
@@ -144,8 +169,55 @@
         observer.observe(document.body, { childList: true, subtree: true });
     }
 
-    // Wait for window 'load' (all resources), then an extra grace period
-    // before we start scanning for tables.
+    function handleNavigation() {
+        console.log('[IT Glue Expand] Navigation detected:', location.href);
+        handledTables = new WeakSet();
+
+        if (!isTargetPage()) {
+            console.log('[IT Glue Expand] Not a /passwords page, skipping');
+            return;
+        }
+
+        setTimeout(() => {
+            scanForTables();
+        }, POST_NAV_DELAY_MS);
+    }
+
+    function hookHistoryNavigation() {
+        const origPush = history.pushState;
+        const origReplace = history.replaceState;
+
+        history.pushState = function (...args) {
+            const result = origPush.apply(this, args);
+            window.dispatchEvent(new Event('itglue:locationchange'));
+            return result;
+        };
+
+        history.replaceState = function (...args) {
+            const result = origReplace.apply(this, args);
+            window.dispatchEvent(new Event('itglue:locationchange'));
+            return result;
+        };
+
+        window.addEventListener('popstate', () => {
+            window.dispatchEvent(new Event('itglue:locationchange'));
+        });
+
+        let lastUrl = location.href;
+        window.addEventListener('itglue:locationchange', () => {
+            if (location.href !== lastUrl) {
+                lastUrl = location.href;
+                handleNavigation();
+            }
+        });
+    }
+
+    function start() {
+        startObserver();
+        hookHistoryNavigation();
+        scanForTables();
+    }
+
     function whenWindowLoaded() {
         return new Promise((resolve) => {
             if (document.readyState === 'complete') {
