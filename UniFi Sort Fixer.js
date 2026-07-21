@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         UniFi Sort Fixer
 // @namespace    UniFi Sort Fixer
-// @version      0.3
+// @version      0.4
 // @description  Fixes the alphabetical sorting on UniFi
 // @author       asheroto
 // @match        https://unifi.ui.com/*
@@ -22,6 +22,10 @@
     function ready(fn) {
         if (document.body) fn();
         else document.addEventListener('DOMContentLoaded', fn, { once: true });
+    }
+    const PAGE_TITLE = 'UniFi Site Manager';
+    function onSiteManager() {
+        return document.title.trim() === PAGE_TITLE;
     }
     ready(() => {
         LOG('DOM ready, starting');
@@ -60,19 +64,23 @@
             setTimeout(clickSiteHeader, 200);
         }
         function tryRun() {
-            if (location.href.startsWith('https://unifi.ui.com/')) {
-                LOG('Starting header search for', location.href);
-                attempts = 0;
-                clicked = false;
-                clickSiteHeader();
+            if (!onSiteManager()) {
+                LOG(`Not "${PAGE_TITLE}" (title: "${document.title}") — standing by`);
+                return;
             }
+            LOG('Starting header search for', location.href);
+            attempts = 0;
+            clicked = false;
+            clickSiteHeader();
         }
         tryRun();
         let lastUrl = location.href;
+        let lastTitle = document.title;
         const observer = new MutationObserver(() => {
-            if (location.href !== lastUrl) {
-                LOG('URL changed:', lastUrl, '->', location.href);
+            if (location.href !== lastUrl || document.title !== lastTitle) {
+                LOG('Change:', `${lastTitle} @ ${lastUrl}`, '->', `${document.title} @ ${location.href}`);
                 lastUrl = location.href;
+                lastTitle = document.title;
                 tryRun();
             }
         });
